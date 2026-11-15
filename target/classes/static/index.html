@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Medicine Donation & Expiry Tracker</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#172033;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}
+header{background:#123b66;color:white;padding:22px 5%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+header h1{font-size:22px;margin:0}header p{margin:6px 0 0;color:#d7e8f8;font-size:13px}
+main{max-width:1150px;margin:28px auto;padding:0 18px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px}
+.card,.panel{background:white;border-radius:12px;padding:18px;box-shadow:0 3px 14px #18395b12}.metric{font-size:28px;font-weight:bold;color:#155a91;margin-top:8px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0}.tabs button,button{border:0;border-radius:7px;padding:10px 14px;background:#1769aa;color:white;cursor:pointer}
+.tabs button{background:#dceaf6;color:#17466c}.tabs button.active{background:#1769aa;color:white}
+.grid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}.panel h2{font-size:18px;margin-top:0}
+input,select{padding:10px;border:1px solid #ccd6e0;border-radius:7px;width:100%;margin:5px 0 12px}
+label{font-size:13px;color:#4b5a6b}form{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}form button{grid-column:1/-1}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px 7px;border-bottom:1px solid #e7edf3}th{color:#526276}
+.status{padding:4px 7px;border-radius:20px;background:#e8f5ec;font-size:11px}.EXPIRED{background:#fde8e8;color:#a52222}.EXPIRING_SOON{background:#fff2d8;color:#8a5a00}
+.small{color:#64748b;font-size:12px}.hidden{display:none}.danger{background:#b83a3a}#message{margin:10px 0;color:#1769aa}
+@media(max-width:760px){.grid{grid-template-columns:1fr}form{grid-template-columns:1fr}form button{grid-column:auto}}
+</style></head><body>
+<header><div><h1>Medicine Donation & Expiry Tracking</h1><p>Academic demonstration dashboard · Sample data only</p></div><span>MEDICARE / DONATION PORTAL</span></header>
+<main>
+<section class="cards" id="metrics"></section>
+<nav class="tabs"><button class="active" onclick="showTab('inventory',this)">Inventory</button><button onclick="showTab('donate',this)">Register Donation</button><button onclick="showTab('requests',this)">Requests</button></nav>
+<div id="message"></div>
+<section id="inventory" class="panel"><h2>Medicine Inventory</h2><input id="search" placeholder="Search medicine..." oninput="loadMedicines()"><div style="overflow:auto"><table><thead><tr><th>Medicine</th><th>Quantity</th><th>Expiry</th><th>Donor</th><th>Status</th></tr></thead><tbody id="medicineRows"></tbody></table></div></section>
+<section id="donate" class="panel hidden"><h2>Register a Donation</h2><form id="donationForm">
+<div><label>Medicine name</label><input name="name" required placeholder="e.g. ORS Sachet"></div>
+<div><label>Unit</label><select name="unit"><option>Tablet</option><option>Sachet</option><option>Bottle</option><option>Piece</option><option>Pack</option></select></div>
+<div><label>Quantity</label><input name="quantity" type="number" min="0" required></div>
+<div><label>Expiry date</label><input name="expiryDate" type="date" required></div>
+<div><label>Donor name</label><input name="donorName" required></div>
+<div><label>Batch number (demo)</label><input name="batchNumber"></div>
+<button type="submit">Save Donation</button></form></section>
+<section id="requests" class="panel hidden"><h2>Medicine Requests</h2><div style="overflow:auto"><table><thead><tr><th>Recipient</th><th>Medicine</th><th>Qty</th><th>Status</th><th>Action</th></tr></thead><tbody id="requestRows"></tbody></table></div>
+<h3 style="font-size:16px">Create a request</h3><form id="requestForm"><div><label>Recipient name</label><input name="recipientName" required></div><div><label>Medicine name</label><input name="medicineName" required></div><div><label>Quantity</label><input name="quantity" type="number" min="1" required></div><button>Submit Request</button></form></section>
+<p class="small">Safety notice: fictional demo records only. Expiry status is not proof of medicine safety or eligibility for redistribution. Real redistribution requires verification by authorized professionals and compliance with applicable rules.</p>
+</main>
+<script>
+async function api(path,opts={}){const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json'},...opts});const data=r.status===204?null:await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data}
+function msg(t){document.getElementById('message').textContent=t}
+function showTab(id,btn){['inventory','donate','requests'].forEach(x=>document.getElementById(x).classList.toggle('hidden',x!==id));document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');if(id==='requests')loadRequests()}
+async function loadDashboard(){const d=await api('/dashboard');document.getElementById('metrics').innerHTML=[['Medicine records',d.medicineRecords],['Available units',d.totalUnits],['Expiring soon',d.expiringSoonRecords],['Expired records',d.expiredRecords],['Pending requests',d.pendingRequests]].map(x=>`<div class="card"><div class="small">${x[0]}</div><div class="metric">${x[1]}</div></div>`).join('')}
+async function loadMedicines(){const q=document.getElementById('search').value;const list=await api('/medicines'+(q?'?search='+encodeURIComponent(q):''));document.getElementById('medicineRows').innerHTML=list.map(m=>`<tr><td>${m.name}</td><td>${m.quantity} ${m.unit}</td><td>${m.expiryDate}</td><td>${m.donorName||'-'}</td><td><span class="status ${m.expiryStatus}">${m.expiryStatus.replace('_',' ')}</span></td></tr>`).join('')}
+async function loadRequests(){const list=await api('/requests');document.getElementById('requestRows').innerHTML=list.map(r=>`<tr><td>${r.recipientName}</td><td>${r.medicineName}</td><td>${r.quantity}</td><td>${r.status}</td><td>${r.status==='PENDING'?`<button onclick="decide(${r.id},'approve')">Approve</button> <button class="danger" onclick="decide(${r.id},'reject')">Reject</button>`:'-'}</td></tr>`).join('')}
+document.getElementById('donationForm').addEventListener('submit',async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));f.quantity=Number(f.quantity);try{await api('/medicines',{method:'POST',body:JSON.stringify(f)});e.target.reset();msg('Donation saved.');await refresh()}catch(x){msg(x.message)}});
+document.getElementById('requestForm').addEventListener('submit',async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));f.quantity=Number(f.quantity);try{await api('/requests',{method:'POST',body:JSON.stringify(f)});e.target.reset();msg('Request submitted.');await loadRequests();await loadDashboard()}catch(x){msg(x.message)}});
+async function decide(id,decision){try{await api(`/requests/${id}/${decision}`,{method:'PUT'});msg('Request updated.');await loadRequests();await refresh()}catch(x){msg(x.message)}}
+async function refresh(){await loadDashboard();await loadMedicines()}
+refresh().catch(e=>msg('Could not connect to backend. Start the Spring Boot application first.'));
+</script></body></html>
